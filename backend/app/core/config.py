@@ -11,9 +11,9 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://dafa-music-erp.vercel.app",
         "https://erp.discovermusic888.com",
     ]
+    BACKEND_CORS_ORIGIN_REGEX: str = r"https://.*\.onrender\.com"
 
     POSTGRES_PASSWORD: str = "password"
     POSTGRES_SERVER: str = "localhost"
