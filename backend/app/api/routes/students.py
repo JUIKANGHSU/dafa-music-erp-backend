@@ -240,3 +240,25 @@ async def update_student_package(
     await session.commit()
     await session.refresh(pkg)
     return pkg
+
+
+@router.delete("/{student_id}/packages/{package_id}", status_code=204, response_model=None)
+async def delete_student_package(
+    *,
+    session: deps.SessionDep,
+    current_user: deps.CurrentUser,
+    student_id: uuid.UUID,
+    package_id: uuid.UUID,
+) -> None:
+    pkg = await session.get(LessonPackage, package_id)
+    if not pkg:
+        raise HTTPException(status_code=404, detail="Package not found")
+    if pkg.student_id != student_id:
+        raise HTTPException(status_code=400, detail="Package does not belong to student")
+
+    # Cancel associated events
+    stmt = delete(Event).where(Event.package_id == package_id)
+    await session.execute(stmt)
+
+    await session.delete(pkg)
+    await session.commit()
