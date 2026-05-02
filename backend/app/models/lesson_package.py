@@ -13,7 +13,8 @@ class LessonPackage(Base):
     student_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("students.id"))
     payment_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("payments.id"))
     plan_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("plans.id"), nullable=True)
-    
+    teacher_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("users.id"), nullable=True)
+
     total_lessons: Mapped[int] = mapped_column(Integer)
     used_lessons: Mapped[int] = mapped_column(Integer, default=0)
     start_date: Mapped[Date] = mapped_column(Date)
