@@ -87,6 +87,37 @@ async def student_check_in(
         "email_sent": email_sent
     }
 
+@router.post("/shortcut-checkin")
+async def shortcut_checkin(
+    *,
+    session: deps.SessionDep,
+    secret: str,
+    name: str,
+) -> Any:
+    from app.core.config import settings
+    from app.models.user import User
+
+    if secret != settings.SHORTCUT_SECRET:
+        raise HTTPException(status_code=403, detail="無效的 secret")
+
+    result = await session.execute(
+        select(Student).where(Student.name.ilike(f"%{name}%")).limit(1)
+    )
+    student = result.scalar_one_or_none()
+    if not student:
+        return {"message": f"找不到學生：{name}"}
+
+    log = AttendanceLog(
+        student_id=student.id,
+        check_in_time=datetime.now(),
+        status="present"
+    )
+    session.add(log)
+    await session.commit()
+
+    return {"message": f"{student.name} 簽到成功！"}
+
+
 @router.get("", response_model=List[dict])
 async def read_attendance_logs(
     session: deps.SessionDep,

@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     LINE_CHANNEL_ACCESS_TOKEN: str = ""
     LINE_CHANNEL_SECRET: str = ""
 
+    # Siri Shortcut
+    SHORTCUT_SECRET: str = "dafa-shortcut-2026"
+
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
 
 settings = Settings()
