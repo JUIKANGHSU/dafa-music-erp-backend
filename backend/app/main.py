@@ -1,7 +1,9 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.core.config import settings
+from app.db.session import AsyncSessionLocal
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -25,3 +27,9 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 @app.get("/")
 def root():
     return {"message": "Welcome to Da-Fa Music School ERP API"}
+
+@app.get("/health")
+async def health():
+    async with AsyncSessionLocal() as session:
+        await session.execute(text("SELECT 1"))
+    return {"status": "ok"}

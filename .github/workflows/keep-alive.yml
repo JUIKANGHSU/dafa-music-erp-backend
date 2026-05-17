@@ -6,7 +6,7 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping backend
-        run: curl -s https://dafa-music-erp-backend-1.onrender.com > /dev/null
+      - name: Ping backend (with DB query)
+        run: curl -sf https://dafa-music-erp-backend-1.onrender.com/health > /dev/null
       - name: Ping frontend
         run: curl -s https://erp.discovermusic888.com > /dev/null
