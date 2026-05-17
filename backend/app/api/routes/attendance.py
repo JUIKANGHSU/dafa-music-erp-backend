@@ -95,7 +95,6 @@ async def shortcut_checkin(
     name: str,
 ) -> Any:
     from app.core.config import settings
-    from app.models.user import User
 
     if secret != settings.SHORTCUT_SECRET:
         raise HTTPException(status_code=403, detail="無效的 secret")
@@ -114,6 +113,27 @@ async def shortcut_checkin(
     )
     session.add(log)
     await session.commit()
+
+    # Get active plan name
+    pkg_result = await session.execute(
+        select(Plan.name)
+        .join(LessonPackage, LessonPackage.plan_id == Plan.id)
+        .where(LessonPackage.student_id == student.id, LessonPackage.status == "active")
+        .limit(1)
+    )
+    plan_name = pkg_result.scalar() or "課程"
+
+    # Send LINE message
+    if student.line_user_id:
+        tw_time = datetime.now(timezone.utc) + timedelta(hours=8)
+        date_str = f"{tw_time.month}/{tw_time.day}/{tw_time.year}"
+        time_str = tw_time.strftime("%H:%M")
+        message = (
+            f"親愛的 {student.name} 您好，\n"
+            f"您已於 {date_str} {time_str} 完成一堂 {plan_name}，\n"
+            f"大發音樂祝您上課愉快！"
+        )
+        LineMessagingService.send_message(student.line_user_id, message)
 
     return {"message": f"{student.name} 簽到成功！"}
 
