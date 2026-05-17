@@ -242,6 +242,43 @@ async def update_student_package(
     return pkg
 
 
+@router.post("/{student_id}/send-payment-reminder")
+async def send_payment_reminder(
+    *,
+    session: deps.SessionDep,
+    current_user: deps.CurrentUser,
+    student_id: uuid.UUID,
+) -> Any:
+    from app.services.line_notify import LineMessagingService
+
+    student = await session.get(Student, student_id)
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    if not student.line_user_id:
+        raise HTTPException(status_code=400, detail="此學生尚未設定 LINE ID")
+
+    pkg_query = (
+        select(LessonPackage, Plan.name)
+        .join(Plan, LessonPackage.plan_id == Plan.id)
+        .where(LessonPackage.student_id == student_id)
+        .where(LessonPackage.status == "active")
+    )
+    pkg_result = await session.execute(pkg_query)
+    row = pkg_result.first()
+    plan_name = row[1] if row else "課程"
+
+    message = (
+        f"親愛的{student.name}您好，"
+        f"感謝您完成本期的{plan_name}，"
+        f"提醒您，記得繳交下一期學費！以安排後續課程。"
+    )
+
+    sent = LineMessagingService.send_message(student.line_user_id, message)
+    if not sent:
+        raise HTTPException(status_code=500, detail="LINE 訊息傳送失敗")
+    return {"success": True}
+
+
 @router.delete("/{student_id}/packages/{package_id}", status_code=204, response_model=None)
 async def delete_student_package(
     *,
