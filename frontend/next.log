@@ -1,0 +1,33 @@
+
+> frontend@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+
+ ✓ Starting...
+ ✓ Ready in 2.8s
+ ○ Compiling / ...
+ ✓ Compiled / in 5.2s (865 modules)
+ GET / 200 in 5818ms
+ ✓ Compiled in 623ms (438 modules)
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 1163ms (836 modules)
+ ✓ Compiled (868 modules)
+ GET /favicon.ico 200 in 1511ms
+ GET /apple-touch-icon-precomposed.png 404 in 1633ms
+ GET /avatars/01.png 404 in 1412ms
+ GET /apple-touch-icon.png 404 in 52ms
+ ○ Compiling /students ...
+ ✓ Compiled /calendar in 6.5s (3254 modules)
+(node:1993) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ○ Compiling /checkin ...
+ ✓ Compiled /checkin in 1189ms (3268 modules)
+ ○ Compiling /plans ...
+ ✓ Compiled /plans in 533ms (3280 modules)
+ GET / 200 in 1443ms
+ GET /avatars/01.png 404 in 76ms
+ GET /settings 404 in 75ms
+ GET / 200 in 603ms
+ GET /avatars/01.png 404 in 110ms
