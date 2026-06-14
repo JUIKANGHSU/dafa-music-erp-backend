@@ -178,16 +178,21 @@ export default function CalendarView() {
                 footerToolbar={isMobile ? {
                     center: "dayGridMonth,timeGridWeek,timeGridDay"
                 } : undefined}
-                dayHeaderContent={(arg) => (
-                    <div className="flex flex-col items-center leading-tight py-1">
-                        <span className="text-xs text-gray-400 font-medium">
-                            {arg.date.toLocaleDateString("zh-TW", { weekday: "short" })}
-                        </span>
-                        <span className="text-sm font-bold text-gray-800">
-                            {`${arg.date.getMonth() + 1}/${arg.date.getDate()}`}
-                        </span>
-                    </div>
-                )}
+                dayHeaderContent={(arg) => {
+                    const isMonthView = arg.view.type === "dayGridMonth"
+                    return (
+                        <div className="flex flex-col items-center leading-tight py-1">
+                            <span className={`font-medium ${isMonthView ? "text-sm text-gray-700" : "text-xs text-gray-400"}`}>
+                                {arg.date.toLocaleDateString("zh-TW", { weekday: "short" })}
+                            </span>
+                            {!isMonthView && (
+                                <span className="text-sm font-bold text-gray-800">
+                                    {`${arg.date.getMonth() + 1}/${arg.date.getDate()}`}
+                                </span>
+                            )}
+                        </div>
+                    )
+                }}
                 events={events}
                 datesSet={(arg) => fetchEvents(arg)}
                 editable={!isMobile}
