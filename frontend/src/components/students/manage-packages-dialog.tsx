@@ -36,6 +36,7 @@ interface Package {
     id: string
     student_id: string
     teacher_id?: string
+    teacher_name?: string
     total_lessons: number
     used_lessons: number
     start_date: string
@@ -289,8 +290,8 @@ export function ManagePackagesDialog({ studentId, studentName, trigger }: Manage
                                                 </span>
                                             </div>
                                             <div className="text-xs text-zinc-500">開始日期：{pkg.start_date}</div>
-                                            {pkg.teacher_id && (
-                                                <div className="text-xs text-zinc-500">老師：{teachers.find(t => t.id === pkg.teacher_id)?.name || pkg.teacher_id}</div>
+                                            {pkg.teacher_name && (
+                                                <div className="text-xs text-zinc-500">老師：{pkg.teacher_name}</div>
                                             )}
                                             <div className="flex gap-2 pt-1">
                                                 <Button size="sm" variant="outline" className="flex-1" onClick={() => startEdit(pkg)}>

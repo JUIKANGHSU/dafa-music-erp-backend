@@ -54,7 +54,7 @@ const formSchema = z.object({
     total_lessons: z.coerce.number().min(1),
     start_date: z.string().min(1, "Start date is required"),
     start_time: z.string().min(1),
-    teacher_id: z.string().optional(),
+    teacher_id: z.string().min(1, "請選擇老師").refine(val => val !== "none", { message: "請選擇老師" }),
     frequency_days: z.coerce.number().min(1),
 })
 
@@ -170,24 +170,17 @@ export function AssignPlanDialog({ studentId, studentName, trigger }: AssignPlan
                 headers: { Authorization: `Bearer ${token}` }
             })
 
-            if (values.teacher_id && values.teacher_id !== "none") {
-                const packagesRes = await axios.get(`/api/students/${studentId}/packages`, {
+            const newPackageId = paymentRes.data.lesson_package_id
+            if (newPackageId && values.teacher_id && values.teacher_id !== "none") {
+                const startDateTime = new Date(`${values.start_date}T${values.start_time}:00`).toISOString()
+                await axios.post(`/api/students/${studentId}/schedule`, {
+                    lesson_package_id: newPackageId,
+                    teacher_id: values.teacher_id,
+                    start_date: startDateTime,
+                    frequency_days: values.frequency_days
+                }, {
                     headers: { Authorization: `Bearer ${token}` }
                 })
-                // Assuming the first one is the newest one we just created
-                const newPackage = packagesRes.data[0]
-
-                if (newPackage) {
-                    const startDateTime = new Date(`${values.start_date}T${values.start_time}:00`).toISOString()
-                    await axios.post(`/api/students/${studentId}/schedule`, {
-                        lesson_package_id: newPackage.id,
-                        teacher_id: values.teacher_id,
-                        start_date: startDateTime,
-                        frequency_days: values.frequency_days
-                    }, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    })
-                }
             }
 
             setOpen(false)
@@ -398,15 +391,14 @@ export function AssignPlanDialog({ studentId, studentName, trigger }: AssignPlan
                             name="teacher_id"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>指定老師 (自動排程)</FormLabel>
+                                    <FormLabel>指定老師 <span className="text-red-500">*</span></FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
                                             <SelectTrigger>
-                                                <SelectValue placeholder="選擇老師..." />
+                                                <SelectValue placeholder="請選擇老師..." />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            <SelectItem value="none">無 (不安排)</SelectItem>
                                             {teachers.map((t) => (
                                                 <SelectItem key={t.id} value={t.id}>
                                                     {t.name}

@@ -12,7 +12,7 @@ from datetime import date
 
 router = APIRouter()
 
-@router.post("/students/{student_id}/payments", response_model=PaymentOut)
+@router.post("/students/{student_id}/payments")
 async def create_payment_for_student(
     *,
     session: deps.SessionDep,
@@ -53,10 +53,20 @@ async def create_payment_for_student(
         status="active"
     )
     session.add(package)
-    
+
     await session.commit()
     await session.refresh(payment)
-    return payment
+    await session.refresh(package)
+    return {
+        "id": str(payment.id),
+        "student_id": str(payment.student_id),
+        "plan_name_snapshot": payment.plan_name_snapshot,
+        "paid_amount": payment.paid_amount,
+        "paid_at": payment.paid_at,
+        "payment_method": payment.payment_method,
+        "status": payment.status,
+        "lesson_package_id": str(package.id),
+    }
 
 @router.get("/students/{student_id}/payments", response_model=List[PaymentOut])
 async def read_student_payments(

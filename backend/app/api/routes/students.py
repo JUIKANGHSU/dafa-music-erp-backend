@@ -9,7 +9,9 @@ from app.models.lesson_package import LessonPackage
 from app.models.plan import Plan
 from app.models.event import Event
 from app.models.payment import Payment
-from sqlalchemy import delete
+from app.models.attendance import AttendanceLog
+from app.models.user import User
+from sqlalchemy import delete, update as sql_update
 from app.schemas.all import StudentCreate, StudentUpdate, StudentOut, ScheduleCreate, EventOut, PackageOut, LessonPackageUpdate
 
 router = APIRouter()
@@ -139,8 +141,7 @@ async def schedule_lessons(
         events = await generate_events(session, student_id, schedule_in)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+
     return events
 
 @router.delete("/{student_id}", status_code=204, response_model=None)
@@ -184,7 +185,11 @@ async def delete_student(
         # 3. Payments
         stmt = delete(Payment).where(Payment.student_id == student_id)
         await session.execute(stmt)
-        
+
+        # 4. Attendance logs
+        stmt = delete(AttendanceLog).where(AttendanceLog.student_id == student_id)
+        await session.execute(stmt)
+
         await session.delete(student)
         await session.commit()
     except Exception as e:
@@ -203,16 +208,20 @@ async def read_student_packages(
     current_user: deps.CurrentUser,
     student_id: uuid.UUID,
 ) -> Any:
-    """
-    Retrieve packages for a student.
-    """
     pkg_query = (
-        select(LessonPackage)
+        select(LessonPackage, User.name.label("teacher_name"))
+        .outerjoin(User, LessonPackage.teacher_id == User.id)
         .where(LessonPackage.student_id == student_id)
         .order_by(LessonPackage.created_at.desc())
     )
     result = await session.execute(pkg_query)
-    return result.scalars().all()
+    rows = result.all()
+    packages = []
+    for pkg, teacher_name in rows:
+        out = PackageOut.model_validate(pkg)
+        out.teacher_name = teacher_name
+        packages.append(out)
+    return packages
 
 @router.patch("/{student_id}/packages/{package_id}", response_model=PackageOut)
 async def update_student_package(

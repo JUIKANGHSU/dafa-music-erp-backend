@@ -9,6 +9,7 @@ from app.models.student import Student
 from app.models.attendance import AttendanceLog
 from app.models.lesson_package import LessonPackage
 from app.models.plan import Plan
+from app.models.user import User
 from app.services.line_notify import LineMessagingService
 from app.schemas.all import StudentOut
 
@@ -27,24 +28,35 @@ async def student_check_in(
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
+    # Get most recent active package to resolve teacher and plan name
+    pkg_result = await session.execute(
+        select(Plan.name, LessonPackage.teacher_id)
+        .join(LessonPackage, LessonPackage.plan_id == Plan.id)
+        .where(LessonPackage.student_id == student.id, LessonPackage.status == "active")
+        .order_by(LessonPackage.created_at.desc())
+        .limit(1)
+    )
+    row = pkg_result.first()
+    plan_name = row[0] if row else "課程"
+    pkg_teacher_id = row[1] if row else None
+
+    if pkg_teacher_id:
+        teacher_user = await session.get(User, pkg_teacher_id)
+        teacher_name = teacher_user.name if teacher_user else current_user.name
+        resolved_teacher_id = pkg_teacher_id
+    else:
+        teacher_name = current_user.name
+        resolved_teacher_id = current_user.id
+
     log = AttendanceLog(
         student_id=student.id,
-        teacher_id=current_user.id,
+        teacher_id=resolved_teacher_id,
         check_in_time=datetime.now(),
         status="present"
     )
     session.add(log)
     await session.commit()
     await session.refresh(log)
-
-    # Get active plan name
-    pkg_result = await session.execute(
-        select(Plan.name)
-        .join(LessonPackage, LessonPackage.plan_id == Plan.id)
-        .where(LessonPackage.student_id == student.id, LessonPackage.status == "active")
-        .limit(1)
-    )
-    plan_name = pkg_result.scalar() or "課程"
 
     # Format time in Taiwan timezone (UTC+8)
     tw_time = log.check_in_time.replace(tzinfo=timezone.utc) + timedelta(hours=8)
@@ -59,7 +71,7 @@ async def student_check_in(
         message = (
             f"親愛的 {student.name} 您好，\n"
             f"您已於 {date_str} {time_str} 完成一堂 {plan_name}，\n"
-            f"老師為 {current_user.name}，\n"
+            f"老師為 {teacher_name}，\n"
             f"大發音樂祝您上課愉快！"
         )
         line_sent = LineMessagingService.send_message(student.line_user_id, message)
@@ -73,7 +85,7 @@ async def student_check_in(
         content = (
             f"親愛的 {student.name} 您好，\n\n"
             f"您已於 {date_str} {time_str} 完成一堂 {plan_name}，\n"
-            f"老師為 {current_user.name}，\n\n"
+            f"老師為 {teacher_name}，\n\n"
             f"大發音樂祝您上課愉快！"
         )
         email_sent = EmailService.send_email(student.email, subject, content)

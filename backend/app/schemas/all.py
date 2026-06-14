@@ -110,6 +110,7 @@ class PaymentOut(BaseModel):
     paid_at: datetime
     payment_method: str
     status: str
+    lesson_package_id: Optional[uuid.UUID] = None
     model_config = ConfigDict(from_attributes=True)
 
 # --- Package ---
@@ -117,6 +118,7 @@ class PackageOut(BaseModel):
     id: uuid.UUID
     student_id: uuid.UUID
     teacher_id: Optional[uuid.UUID] = None
+    teacher_name: Optional[str] = None
     total_lessons: int
     used_lessons: int
     start_date: date

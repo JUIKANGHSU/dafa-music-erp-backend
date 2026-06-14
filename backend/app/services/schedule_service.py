@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, date
-from sqlalchemy import select
+from sqlalchemy import select, update as sqla_update
 from typing import List
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,7 +53,7 @@ async def generate_events(session: AsyncSession, student_id: uuid.UUID, schedule
         # schedule.start_date is now datetime
         start_dt = schedule.start_date + timedelta(days=i * schedule.frequency_days)
         end_dt = start_dt + timedelta(minutes=duration_minutes)
-        
+
         event = Event(
             title=student_name,
             start_at=start_dt,
@@ -66,6 +66,15 @@ async def generate_events(session: AsyncSession, student_id: uuid.UUID, schedule
         )
         session.add(event)
         events.append(event)
+
+    # Update package teacher_id in the same transaction using explicit SQL
+    await session.execute(
+        sqla_update(LessonPackage)
+        .where(LessonPackage.id == pkg.id)
+        .values(teacher_id=schedule.teacher_id)
+        .execution_options(synchronize_session=False)
+    )
+
     await session.commit()
     # Refresh to get IDs
     for ev in events:
