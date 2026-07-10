@@ -10,6 +10,7 @@ from app.models.attendance import AttendanceLog
 from app.models.lesson_package import LessonPackage
 from app.models.plan import Plan
 from app.models.user import User
+from app.models.event import Event
 from app.services.line_notify import LineMessagingService
 from app.schemas.all import StudentOut
 
@@ -48,10 +49,30 @@ async def student_check_in(
         teacher_name = current_user.name
         resolved_teacher_id = current_user.id
 
+    # 找今天該學員最近的一堂課（以台灣時間 UTC+8 計算當天範圍）
+    now_utc = datetime.now(timezone.utc)
+    today_start = (now_utc + timedelta(hours=8)).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(hours=8)
+    today_end = today_start + timedelta(days=1)
+
+    event_result = await session.execute(
+        select(Event)
+        .where(
+            Event.student_id == student.id,
+            Event.start_at >= today_start,
+            Event.start_at < today_end,
+            Event.status == "scheduled"
+        )
+        .order_by(Event.start_at.asc())
+        .limit(1)
+    )
+    event = event_result.scalar_one_or_none()
+    if not event:
+        raise HTTPException(status_code=404, detail="今天找不到該學員的排課，請先建立課程再簽到")
+
     log = AttendanceLog(
         student_id=student.id,
         teacher_id=resolved_teacher_id,
-        check_in_time=datetime.now(),
+        check_in_time=event.start_at,
         status="present"
     )
     session.add(log)
