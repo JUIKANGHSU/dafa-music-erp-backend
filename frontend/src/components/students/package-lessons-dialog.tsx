@@ -27,11 +27,12 @@ interface Lesson {
 interface PackageLessonsDialogProps {
     studentId: string
     packageId: string
+    totalLessons: number
     label?: string
     trigger?: React.ReactNode
 }
 
-export function PackageLessonsDialog({ studentId, packageId, label, trigger }: PackageLessonsDialogProps) {
+export function PackageLessonsDialog({ studentId, packageId, totalLessons, label, trigger }: PackageLessonsDialogProps) {
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [lessons, setLessons] = useState<Lesson[]>([])
@@ -58,11 +59,14 @@ export function PackageLessonsDialog({ studentId, packageId, label, trigger }: P
     }, [open, studentId, packageId])
 
     const summary = useMemo(() => {
-        const checkedIn = lessons.filter(l => l.checked_in).length
-        const leave = lessons.filter(l => !l.checked_in && l.status === "canceled").length
-        const upcoming = lessons.length - checkedIn - leave
-        return { total: lessons.length, checkedIn, leave, upcoming }
-    }, [lessons])
+        // 請假會把原堂標記成 canceled 並在課表最後補一堂，兩者是同一堂課的紀錄，
+        // 所以「總堂數」要用購買數 total_lessons，不能直接算 lessons.length。
+        const active = lessons.filter(l => l.status !== "canceled")
+        const checkedIn = active.filter(l => l.checked_in).length
+        const upcoming = active.length - checkedIn
+        const leave = lessons.filter(l => l.status === "canceled").length
+        return { total: totalLessons, checkedIn, leave, upcoming }
+    }, [lessons, totalLessons])
 
     const lessonStatus = (lesson: Lesson) => {
         if (lesson.checked_in) {
@@ -93,7 +97,8 @@ export function PackageLessonsDialog({ studentId, packageId, label, trigger }: P
                 ) : (
                     <div className="space-y-3">
                         <div className="text-sm text-zinc-600 bg-zinc-50 rounded-lg px-3 py-2">
-                            本期共 {summary.total} 堂．已簽到 {summary.checkedIn}．請假 {summary.leave}．尚未上課 {summary.upcoming}
+                            本期共 {summary.total} 堂．已簽到 {summary.checkedIn}．尚未上課 {summary.upcoming}
+                            {summary.leave > 0 && `（另有請假並改期 ${summary.leave} 次，不計入總堂數）`}
                         </div>
                         <div className="space-y-2">
                             {lessons.map((lesson) => {

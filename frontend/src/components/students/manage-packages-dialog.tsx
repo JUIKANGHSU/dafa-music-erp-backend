@@ -304,6 +304,7 @@ export function ManagePackagesDialog({ studentId, studentName, trigger }: Manage
                                                 <PackageLessonsDialog
                                                     studentId={studentId}
                                                     packageId={pkg.id}
+                                                    totalLessons={pkg.total_lessons}
                                                     label={pkg.start_date}
                                                     trigger={
                                                         <Button size="sm" variant="outline" className="flex-1">
