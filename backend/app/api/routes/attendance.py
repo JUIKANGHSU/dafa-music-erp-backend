@@ -69,9 +69,16 @@ async def student_check_in(
     if not event:
         raise HTTPException(status_code=404, detail="今天找不到該學員的排課，請先建立課程再簽到")
 
+    existing_log = await session.execute(
+        select(AttendanceLog).where(AttendanceLog.event_id == event.id)
+    )
+    if existing_log.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="這堂課今天已經簽到過了")
+
     log = AttendanceLog(
         student_id=student.id,
         teacher_id=resolved_teacher_id,
+        event_id=event.id,
         check_in_time=event.start_at,
         status="present"
     )

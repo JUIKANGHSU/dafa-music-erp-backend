@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Loader2, Edit2, Check, X, Trash2, CalendarPlus } from "lucide-react"
+import { Loader2, Edit2, Check, X, Trash2, CalendarPlus, ClipboardList } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -31,6 +31,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { PackageLessonsDialog } from "@/components/students/package-lessons-dialog"
 
 interface Package {
     id: string
@@ -300,6 +301,16 @@ export function ManagePackagesDialog({ studentId, studentName, trigger }: Manage
                                                 <Button size="sm" variant="outline" className="flex-1" onClick={() => openScheduleDialog(pkg.id)}>
                                                     <CalendarPlus className="h-3.5 w-3.5 mr-1 text-blue-600" /> 排課
                                                 </Button>
+                                                <PackageLessonsDialog
+                                                    studentId={studentId}
+                                                    packageId={pkg.id}
+                                                    label={pkg.start_date}
+                                                    trigger={
+                                                        <Button size="sm" variant="outline" className="flex-1">
+                                                            <ClipboardList className="h-3.5 w-3.5 mr-1 text-purple-600" /> 紀錄
+                                                        </Button>
+                                                    }
+                                                />
                                                 <Button size="sm" variant="outline" className="text-red-500 border-red-200" onClick={() => deletePackage(pkg.id)}>
                                                     <Trash2 className="h-3.5 w-3.5" />
                                                 </Button>

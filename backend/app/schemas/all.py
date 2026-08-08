@@ -126,6 +126,16 @@ class PackageOut(BaseModel):
     status: str
     model_config = ConfigDict(from_attributes=True)
 
+class LessonRecordOut(BaseModel):
+    id: uuid.UUID
+    start_at: datetime
+    end_at: datetime
+    status: str
+    note: Optional[str] = None
+    checked_in: bool = False
+    check_in_time: Optional[datetime] = None
+    model_config = ConfigDict(from_attributes=True)
+
 class LessonPackageUpdate(BaseModel):
     teacher_id: Optional[uuid.UUID] = None
     total_lessons: Optional[int] = None

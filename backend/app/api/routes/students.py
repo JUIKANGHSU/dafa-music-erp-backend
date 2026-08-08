@@ -12,7 +12,7 @@ from app.models.payment import Payment
 from app.models.attendance import AttendanceLog
 from app.models.user import User
 from sqlalchemy import delete, update as sql_update
-from app.schemas.all import StudentCreate, StudentUpdate, StudentOut, ScheduleCreate, EventOut, PackageOut, LessonPackageUpdate
+from app.schemas.all import StudentCreate, StudentUpdate, StudentOut, ScheduleCreate, EventOut, PackageOut, LessonPackageUpdate, LessonRecordOut
 
 router = APIRouter()
 
@@ -222,6 +222,39 @@ async def read_student_packages(
         out.teacher_name = teacher_name
         packages.append(out)
     return packages
+
+@router.get("/{student_id}/packages/{package_id}/lessons", response_model=List[LessonRecordOut])
+async def read_package_lessons(
+    *,
+    session: deps.SessionDep,
+    current_user: deps.CurrentUser,
+    student_id: uuid.UUID,
+    package_id: uuid.UUID,
+) -> Any:
+    """
+    List every scheduled lesson (Event) for a lesson package, with check-in status.
+    """
+    pkg = await session.get(LessonPackage, package_id)
+    if not pkg:
+        raise HTTPException(status_code=404, detail="Package not found")
+    if pkg.student_id != student_id:
+        raise HTTPException(status_code=400, detail="Package does not belong to student")
+
+    query = (
+        select(Event, AttendanceLog.check_in_time)
+        .outerjoin(AttendanceLog, AttendanceLog.event_id == Event.id)
+        .where(Event.package_id == package_id)
+        .order_by(Event.start_at.asc())
+    )
+    result = await session.execute(query)
+    lessons = []
+    for event, check_in_time in result:
+        out = LessonRecordOut.model_validate(event)
+        out.checked_in = check_in_time is not None
+        out.check_in_time = check_in_time
+        lessons.append(out)
+    return lessons
+
 
 @router.patch("/{student_id}/packages/{package_id}", response_model=PackageOut)
 async def update_student_package(
