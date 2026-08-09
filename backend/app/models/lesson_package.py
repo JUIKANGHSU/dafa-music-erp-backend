@@ -20,7 +20,8 @@ class LessonPackage(Base):
     start_date: Mapped[Date] = mapped_column(Date)
     expire_date: Mapped[Optional[Date]] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(String, default="active") # active, expired, closed
-    
+    last_reminder_sent_at: Mapped[Optional[DateTime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
     plan: Mapped["Plan"] = relationship("Plan")
 
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())

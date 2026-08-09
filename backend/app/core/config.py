@@ -41,6 +41,15 @@ class Settings(BaseSettings):
     # Siri Shortcut
     SHORTCUT_SECRET: str = "dafa-shortcut-2026"
 
+    # Sandbox: when true, outbound LINE/email messages are logged only, never actually sent
+    SANDBOX_MODE: bool = False
+
+    # Local disk storage for lesson media (photos/videos). NOTE: this is NOT durable on
+    # platforms with ephemeral filesystems (e.g. Render) — production needs object storage
+    # (Supabase Storage / S3) wired in separately before this is safe to rely on there.
+    UPLOAD_DIR: str = "uploads/lesson_media"
+    MAX_UPLOAD_SIZE_MB: int = 50
+
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
 
 settings = Settings()

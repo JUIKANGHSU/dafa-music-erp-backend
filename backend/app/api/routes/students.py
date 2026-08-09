@@ -290,6 +290,38 @@ async def update_student_package(
     return pkg
 
 
+@router.post("/reminders/scan")
+async def scan_payment_reminders(
+    *,
+    session: deps.SessionDep,
+    current_user: deps.CurrentUser,
+    dry_run: bool = True,
+) -> Any:
+    """
+    Run the payment reminder agent. Defaults to dry_run=True (report only,
+    sends nothing). Pass dry_run=false to actually send reminders.
+    """
+    from app.services.reminder_agent import run_payment_reminder_scan
+
+    decisions = await run_payment_reminder_scan(session, dry_run=dry_run)
+    return {
+        "dry_run": dry_run,
+        "count": len(decisions),
+        "results": [
+            {
+                "student_id": d.student_id,
+                "student_name": d.student_name,
+                "package_id": d.package_id,
+                "plan_name": d.plan_name,
+                "remaining_lessons": d.remaining_lessons,
+                "action": d.action,
+                "detail": d.detail,
+            }
+            for d in decisions
+        ],
+    }
+
+
 @router.post("/{student_id}/send-payment-reminder")
 async def send_payment_reminder(
     *,

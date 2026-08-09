@@ -9,6 +9,13 @@ class LineMessagingService:
         if not line_user_id or not settings.LINE_CHANNEL_ACCESS_TOKEN:
             return False
 
+        if settings.SANDBOX_MODE:
+            print(f"--- [SANDBOX] LINE message NOT sent ---")
+            print(f"To: {line_user_id}")
+            print(f"Message: {message}")
+            print(f"----------------------------------------")
+            return True
+
         headers = {
             "Authorization": f"Bearer {settings.LINE_CHANNEL_ACCESS_TOKEN}",
             "Content-Type": "application/json",
