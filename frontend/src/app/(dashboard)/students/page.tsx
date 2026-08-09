@@ -6,9 +6,10 @@ import { DataTable } from "@/components/students/data-table"
 import { StudentDialog } from "@/components/students/student-dialog"
 import { AssignPlanDialog } from "@/components/students/assign-plan-dialog"
 import { ManagePackagesDialog } from "@/components/students/manage-packages-dialog"
-import { Loader2, Phone, MoreHorizontal, Search, LayoutGrid, CalendarDays, BellRing } from "lucide-react"
+import { Loader2, Phone, MoreHorizontal, Search, LayoutGrid, CalendarDays, BellRing, Archive, RotateCcw, Trash2 } from "lucide-react"
 import { useIsMobile } from "@/lib/use-is-mobile"
 import { useToast } from "@/components/ui/use-toast"
+import { Button } from "@/components/ui/button"
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem,
     DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator
@@ -115,12 +116,79 @@ function StudentCard({ student, size = "md" }: { student: Student, size?: "sm" |
     )
 }
 
+function ArchivedStudentCard({ student, onRestored, onDeleted }: { student: Student, onRestored: () => void, onDeleted: () => void }) {
+    const { toast } = useToast()
+    const initials = student.name.slice(0, 2)
+    const [busy, setBusy] = useState(false)
+
+    async function restore() {
+        setBusy(true)
+        try {
+            const { default: axios } = await import("axios")
+            const token = localStorage.getItem("token")
+            await axios.patch(`/api/students/${student.id}`, { status: "active" }, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            toast({ title: "已恢復在籍", description: `${student.name} 已移回學生列表` })
+            onRestored()
+        } catch (err: any) {
+            toast({ title: "恢復失敗", description: err.response?.data?.detail ?? "請稍後再試", variant: "destructive" })
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    async function permanentDelete() {
+        if (!confirm(`確定要永久刪除「${student.name}」嗎？這會一併刪除他的課程包、繳費與簽到紀錄，此動作無法復原。`)) return
+        setBusy(true)
+        try {
+            const { default: axios } = await import("axios")
+            const token = localStorage.getItem("token")
+            await axios.delete(`/api/students/${student.id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            toast({ title: "已永久刪除", description: `${student.name} 的所有資料已刪除` })
+            onDeleted()
+        } catch (err: any) {
+            toast({ title: "刪除失敗", description: err.response?.data?.detail ?? "請稍後再試", variant: "destructive" })
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    return (
+        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden opacity-80">
+            <div className="bg-gray-300 flex items-center justify-center h-16">
+                <span className="font-bold text-white text-xl">{initials}</span>
+            </div>
+            <div className="p-3">
+                <p className="font-semibold text-zinc-900 truncate text-sm">{student.name}</p>
+                {student.nickname && <p className="text-xs text-zinc-400 truncate">「{student.nickname}」</p>}
+                <p className="flex items-center gap-1 mt-1.5 text-xs text-zinc-500">
+                    <Phone className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">{student.phone}</span>
+                </p>
+                <div className="mt-2.5 flex gap-1.5">
+                    <Button size="sm" variant="outline" className="flex-1 text-xs" disabled={busy} onClick={restore}>
+                        <RotateCcw className="h-3.5 w-3.5 mr-1" /> 恢復在籍
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-red-500 border-red-200 text-xs" disabled={busy} onClick={permanentDelete}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 export default function StudentsPage() {
     const [data, setData] = useState<Student[]>([])
     const [events, setEvents] = useState<{ student_id: string, start_at: string }[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState("")
-    const [view, setView] = useState<"all" | "byDay">("all")
+    const [view, setView] = useState<"all" | "byDay" | "archived">("all")
+    const [archivedData, setArchivedData] = useState<Student[]>([])
+    const [archivedLoading, setArchivedLoading] = useState(false)
     const isMobile = useIsMobile()
 
     useEffect(() => {
@@ -148,6 +216,28 @@ export default function StudentsPage() {
         }
         load()
     }, [])
+
+    const fetchArchived = async () => {
+        setArchivedLoading(true)
+        try {
+            const { default: axios } = await import("axios")
+            const token = localStorage.getItem("token")
+            const res = await axios.get("/api/students/", {
+                headers: { Authorization: `Bearer ${token}` },
+                params: { status: "archived" }
+            })
+            setArchivedData(res.data)
+        } catch (err) {
+            console.error(err)
+        } finally {
+            setArchivedLoading(false)
+        }
+    }
+
+    const switchView = (v: "all" | "byDay" | "archived") => {
+        setView(v)
+        if (v === "archived") fetchArchived()
+    }
 
     // Map studentId → set of weekday indices (0=Mon ... 6=Sun)
     const studentDayMap = useMemo(() => {
@@ -194,18 +284,25 @@ export default function StudentsPage() {
                 </div>
                 <div className="flex rounded-xl border border-gray-200 bg-white overflow-hidden">
                     <button
-                        onClick={() => setView("all")}
+                        onClick={() => switchView("all")}
                         className={`px-3 py-2 text-xs font-medium flex items-center gap-1.5 transition-colors ${view === "all" ? "bg-[#0F1F5C] text-white" : "text-gray-500 hover:bg-gray-50"}`}
                     >
                         <LayoutGrid className="h-3.5 w-3.5" />
                         {!isMobile && "全部"}
                     </button>
                     <button
-                        onClick={() => setView("byDay")}
+                        onClick={() => switchView("byDay")}
                         className={`px-3 py-2 text-xs font-medium flex items-center gap-1.5 transition-colors ${view === "byDay" ? "bg-[#0F1F5C] text-white" : "text-gray-500 hover:bg-gray-50"}`}
                     >
                         <CalendarDays className="h-3.5 w-3.5" />
                         {!isMobile && "依星期"}
+                    </button>
+                    <button
+                        onClick={() => switchView("archived")}
+                        className={`px-3 py-2 text-xs font-medium flex items-center gap-1.5 transition-colors ${view === "archived" ? "bg-[#0F1F5C] text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                    >
+                        <Archive className="h-3.5 w-3.5" />
+                        {!isMobile && "非在籍"}
                     </button>
                 </div>
             </div>
@@ -221,6 +318,26 @@ export default function StudentsPage() {
                         <p className="col-span-full text-center text-sm text-zinc-400 py-12">找不到符合的學生</p>
                     )}
                 </div>
+            ) : view === "archived" ? (
+                archivedLoading ? (
+                    <div className="flex h-40 items-center justify-center">
+                        <Loader2 className="h-7 w-7 animate-spin text-gray-400" />
+                    </div>
+                ) : (
+                    <div className={`grid ${cols} gap-3`}>
+                        {archivedData.map(s => (
+                            <ArchivedStudentCard
+                                key={s.id}
+                                student={s}
+                                onRestored={fetchArchived}
+                                onDeleted={fetchArchived}
+                            />
+                        ))}
+                        {archivedData.length === 0 && (
+                            <p className="col-span-full text-center text-sm text-zinc-400 py-12">目前沒有非在籍的學生</p>
+                        )}
+                    </div>
+                )
             ) : (
                 <div className="space-y-6">
                     {WEEKDAYS.map((day, idx) => {

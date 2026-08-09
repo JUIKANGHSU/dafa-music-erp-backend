@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Loader2, Edit2, Check, X, Trash2, CalendarPlus, ClipboardList } from "lucide-react"
+import { Loader2, Edit2, Check, X, Trash2, CalendarPlus, ClipboardList, ChevronDown, ChevronRight } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -56,6 +56,20 @@ export function ManagePackagesDialog({ studentId, studentName, trigger }: Manage
     const [loading, setLoading] = useState(false)
     const [packages, setPackages] = useState<Package[]>([])
     const [editingId, setEditingId] = useState<string | null>(null)
+    const [historyOpen, setHistoryOpen] = useState(false)
+    const [expandedHistoryIds, setExpandedHistoryIds] = useState<Set<string>>(new Set())
+
+    const toggleHistoryExpand = (pkgId: string) => {
+        setExpandedHistoryIds(prev => {
+            const next = new Set(prev)
+            if (next.has(pkgId)) next.delete(pkgId)
+            else next.add(pkgId)
+            return next
+        })
+    }
+
+    const statusLabel = (status: string) =>
+        status === 'active' ? '啟用' : status === 'finished' ? '完成' : status === 'expired' ? '過期' : '作廢'
 
     // Form for inline editing
     // We'll manage state manually for simplicity or use individual forms per row?
@@ -206,32 +220,12 @@ export function ManagePackagesDialog({ studentId, studentName, trigger }: Manage
         }
     }
 
-    return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                {trigger ? trigger : (
-                    <Button variant="ghost" size="sm">Manage Courses</Button>
-                )}
-            </DialogTrigger>
-            <DialogContent className="w-[95vw] max-w-lg max-h-[85vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>{studentName} 的課程管理</DialogTitle>
-                </DialogHeader>
-
-                <div className="py-2 space-y-3">
-                    {loading ? (
-                        <div className="flex justify-center p-4">
-                            <Loader2 className="h-6 w-6 animate-spin" />
-                        </div>
-                    ) : packages.length === 0 ? (
-                        <p className="text-center text-sm text-zinc-400 py-8">尚無課程包</p>
-                    ) : (
-                        packages.map((pkg) => {
-                            const isEditing = editingId === pkg.id
-                            const remaining = pkg.total_lessons - pkg.used_lessons
-                            return (
-                                <div key={pkg.id} className="rounded-xl border bg-white p-4 shadow-sm space-y-3">
-                                    {isEditing ? (
+    const renderPackageBody = (pkg: Package) => {
+        const isEditing = editingId === pkg.id
+        const remaining = pkg.total_lessons - pkg.used_lessons
+        return (
+            <>
+                {isEditing ? (
                                         <div className="space-y-2">
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
@@ -280,47 +274,125 @@ export function ManagePackagesDialog({ studentId, studentName, trigger }: Manage
                                                 </Button>
                                             </div>
                                         </div>
-                                    ) : (
-                                        <>
-                                            <div className="flex items-center justify-between">
-                                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pkg.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                                    {pkg.status === 'active' ? '啟用' : pkg.status === 'finished' ? '完成' : pkg.status === 'expired' ? '過期' : '作廢'}
-                                                </span>
-                                                <span className={`text-sm font-bold ${remaining <= 3 ? 'text-red-500' : 'text-emerald-600'}`}>
-                                                    剩 {remaining} / {pkg.total_lessons} 堂
-                                                </span>
-                                            </div>
-                                            <div className="text-xs text-zinc-500">開始日期：{pkg.start_date}</div>
-                                            {pkg.teacher_name && (
-                                                <div className="text-xs text-zinc-500">老師：{pkg.teacher_name}</div>
-                                            )}
-                                            <div className="flex gap-2 pt-1">
-                                                <Button size="sm" variant="outline" className="flex-1" onClick={() => startEdit(pkg)}>
-                                                    <Edit2 className="h-3.5 w-3.5 mr-1" /> 編輯
-                                                </Button>
-                                                <Button size="sm" variant="outline" className="flex-1" onClick={() => openScheduleDialog(pkg.id)}>
-                                                    <CalendarPlus className="h-3.5 w-3.5 mr-1 text-blue-600" /> 排課
-                                                </Button>
-                                                <PackageLessonsDialog
-                                                    studentId={studentId}
-                                                    packageId={pkg.id}
-                                                    totalLessons={pkg.total_lessons}
-                                                    label={pkg.start_date}
-                                                    trigger={
-                                                        <Button size="sm" variant="outline" className="flex-1">
-                                                            <ClipboardList className="h-3.5 w-3.5 mr-1 text-purple-600" /> 紀錄
-                                                        </Button>
-                                                    }
-                                                />
-                                                <Button size="sm" variant="outline" className="text-red-500 border-red-200" onClick={() => deletePackage(pkg.id)}>
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
-                                        </>
+                ) : (
+                    <>
+                        <div className="flex items-center justify-between">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pkg.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                {statusLabel(pkg.status)}
+                            </span>
+                            <span className={`text-sm font-bold ${remaining <= 3 ? 'text-red-500' : 'text-emerald-600'}`}>
+                                剩 {remaining} / {pkg.total_lessons} 堂
+                            </span>
+                        </div>
+                        <div className="text-xs text-zinc-500">開始日期：{pkg.start_date}</div>
+                        {pkg.teacher_name && (
+                            <div className="text-xs text-zinc-500">老師：{pkg.teacher_name}</div>
+                        )}
+                        <div className="flex gap-2 pt-1">
+                            <Button size="sm" variant="outline" className="flex-1" onClick={() => startEdit(pkg)}>
+                                <Edit2 className="h-3.5 w-3.5 mr-1" /> 編輯
+                            </Button>
+                            <Button size="sm" variant="outline" className="flex-1" onClick={() => openScheduleDialog(pkg.id)}>
+                                <CalendarPlus className="h-3.5 w-3.5 mr-1 text-blue-600" /> 排課
+                            </Button>
+                            <PackageLessonsDialog
+                                studentId={studentId}
+                                packageId={pkg.id}
+                                totalLessons={pkg.total_lessons}
+                                label={pkg.start_date}
+                                trigger={
+                                    <Button size="sm" variant="outline" className="flex-1">
+                                        <ClipboardList className="h-3.5 w-3.5 mr-1 text-purple-600" /> 紀錄
+                                    </Button>
+                                }
+                            />
+                            <Button size="sm" variant="outline" className="text-red-500 border-red-200" onClick={() => deletePackage(pkg.id)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
+                    </>
+                )}
+            </>
+        )
+    }
+
+    const activePackages = packages.filter(p => p.status === 'active')
+    const historyPackages = packages.filter(p => p.status !== 'active')
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                {trigger ? trigger : (
+                    <Button variant="ghost" size="sm">Manage Courses</Button>
+                )}
+            </DialogTrigger>
+            <DialogContent className="w-[95vw] max-w-lg max-h-[85vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>{studentName} 的課程管理</DialogTitle>
+                </DialogHeader>
+
+                <div className="py-2 space-y-3">
+                    {loading ? (
+                        <div className="flex justify-center p-4">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                    ) : packages.length === 0 ? (
+                        <p className="text-center text-sm text-zinc-400 py-8">尚無課程包</p>
+                    ) : (
+                        <>
+                            {activePackages.map((pkg) => (
+                                <div key={pkg.id} className="rounded-xl border bg-white p-4 shadow-sm space-y-3">
+                                    {renderPackageBody(pkg)}
+                                </div>
+                            ))}
+
+                            {activePackages.length === 0 && (
+                                <p className="text-center text-sm text-zinc-400 py-4">目前沒有啟用中的期別</p>
+                            )}
+
+                            {historyPackages.length > 0 && (
+                                <div className="pt-2">
+                                    <button
+                                        type="button"
+                                        className="flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-zinc-700"
+                                        onClick={() => setHistoryOpen(!historyOpen)}
+                                    >
+                                        {historyOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                                        歷史期別（{historyPackages.length}）
+                                    </button>
+
+                                    {historyOpen && (
+                                        <div className="space-y-2 mt-2">
+                                            {historyPackages.map((pkg) => {
+                                                const isExpanded = expandedHistoryIds.has(pkg.id)
+                                                return (
+                                                    <div key={pkg.id} className="rounded-xl border bg-zinc-50 overflow-hidden">
+                                                        <button
+                                                            type="button"
+                                                            className="w-full flex items-center justify-between px-3 py-2 text-sm"
+                                                            onClick={() => toggleHistoryExpand(pkg.id)}
+                                                        >
+                                                            <span className="flex items-center gap-1.5 text-zinc-600">
+                                                                {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                                                                {pkg.start_date}．{pkg.total_lessons} 堂
+                                                            </span>
+                                                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-200 text-gray-600">
+                                                                {statusLabel(pkg.status)}
+                                                            </span>
+                                                        </button>
+                                                        {isExpanded && (
+                                                            <div className="bg-white p-4 space-y-3 border-t">
+                                                                {renderPackageBody(pkg)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
                                     )}
                                 </div>
-                            )
-                        })
+                            )}
+                        </>
                     )}
                 </div>
             </DialogContent>

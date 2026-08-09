@@ -119,13 +119,13 @@ export function StudentDialog({ student, trigger }: StudentDialogProps) {
 
     async function handleDelete(e: React.MouseEvent) {
         e.preventDefault()
-        if (!confirm("確定要刪除這位學生嗎？")) return
+        if (!confirm("確定要將這位學生移到「非在籍」嗎？資料不會被刪除，之後可以在「非在籍」頁籤恢復。")) return
 
         setIsLoading(true)
         try {
             const token = localStorage.getItem("token")
             const { default: axios } = await import("axios")
-            await axios.delete(`/api/students/${student?.id}`, {
+            await axios.patch(`/api/students/${student?.id}`, { status: "archived" }, {
                 headers: { Authorization: `Bearer ${token}` }
             })
             setOpen(false)
@@ -133,7 +133,7 @@ export function StudentDialog({ student, trigger }: StudentDialogProps) {
             window.location.reload()
         } catch (error: any) {
             console.error(error)
-            const msg = error.response?.data?.detail || error.message || "刪除失敗"
+            const msg = error.response?.data?.detail || error.message || "操作失敗"
             alert(msg)
         } finally {
             setIsLoading(false)
@@ -247,7 +247,7 @@ export function StudentDialog({ student, trigger }: StudentDialogProps) {
                                     disabled={isLoading}
                                 >
                                     <Trash className="mr-2 h-4 w-4" />
-                                    刪除
+                                    移至非在籍
                                 </Button>
                             )}
                             <Button type="submit" disabled={isLoading}>

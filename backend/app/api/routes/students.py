@@ -22,12 +22,18 @@ async def read_students(
     current_user: deps.CurrentUser,
     skip: int = 0,
     limit: int = 100,
-    keyword: Optional[str] = None
+    keyword: Optional[str] = None,
+    status: Optional[str] = None,
 ) -> Any:
     """
-    Retrieve students.
+    Retrieve students. Archived (非在籍) students are excluded by default;
+    pass status=archived to list only archived students.
     """
     query = select(Student)
+    if status:
+        query = query.where(Student.status == status)
+    else:
+        query = query.where(Student.status != "archived")
     if keyword:
         query = query.where(
             or_(
