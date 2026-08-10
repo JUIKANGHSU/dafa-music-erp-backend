@@ -175,3 +175,15 @@ class EventOut(EventBase):
     id: uuid.UUID
     status: str
     model_config = ConfigDict(from_attributes=True)
+
+# --- Audit Log ---
+class AuditLogOut(BaseModel):
+    id: uuid.UUID
+    actor_name: str
+    action: str
+    target_type: str
+    target_id: Optional[uuid.UUID] = None
+    target_label: str
+    detail: Optional[str] = None
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)

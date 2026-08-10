@@ -13,6 +13,7 @@ import {
     CheckCircle2,
     LogOut,
     BarChart3,
+    History,
 } from "lucide-react"
 
 const routes = [
@@ -23,6 +24,7 @@ const routes = [
     { label: "課程方案", icon: Music2, href: "/plans" },
     { label: "學生簽到", icon: CheckCircle2, href: "/checkin" },
     { label: "月報表", icon: BarChart3, href: "/reports" },
+    { label: "操作紀錄", icon: History, href: "/audit-log" },
 ]
 
 export function Sidebar() {

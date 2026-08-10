@@ -13,6 +13,7 @@ from app.models.attendance import AttendanceLog
 from app.models.user import User
 from sqlalchemy import delete, update as sql_update
 from app.schemas.all import StudentCreate, StudentUpdate, StudentOut, ScheduleCreate, EventOut, PackageOut, LessonPackageUpdate, LessonRecordOut
+from app.services import audit
 
 router = APIRouter()
 
@@ -119,11 +120,29 @@ async def update_student(
     student = await session.get(Student, student_id)
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
-    
+
     update_data = student_in.model_dump(exclude_unset=True)
+    prev_status = student.status
     for field, value in update_data.items():
         setattr(student, field, value)
-        
+
+    if "status" in update_data and update_data["status"] != prev_status:
+        if update_data["status"] == "archived":
+            action = "student.archived"
+        elif prev_status == "archived":
+            action = "student.restored"
+        else:
+            action = "student.status_changed"
+        await audit.record(
+            session, current_user, action, "student", student.id, student.name,
+            detail=f"{prev_status} → {update_data['status']}",
+        )
+    elif update_data:
+        await audit.record(
+            session, current_user, "student.updated", "student", student.id, student.name,
+            detail=", ".join(update_data.keys()),
+        )
+
     session.add(student)
     await session.commit()
     await session.refresh(student)
@@ -163,7 +182,9 @@ async def delete_student(
     student = await session.get(Student, student_id)
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
-    
+
+    student_name = student.name
+
     # Cascade delete
     try:
         # 0. Get student packages
@@ -197,13 +218,17 @@ async def delete_student(
         await session.execute(stmt)
 
         await session.delete(student)
+        await audit.record(
+            session, current_user, "student.permanently_deleted", "student", student_id, student_name,
+            detail="含課程包、繳費、簽到紀錄一併刪除",
+        )
         await session.commit()
     except Exception as e:
         await session.rollback()
         # Log error here if logger available
         print(f"Error deleting student {student_id}: {e}")
         raise HTTPException(status_code=400, detail=f"Failed to delete student: {str(e)}")
-        
+
     return None
 
 
@@ -279,11 +304,19 @@ async def update_student_package(
         raise HTTPException(status_code=404, detail="Package not found")
     if pkg.student_id != student_id:
         raise HTTPException(status_code=400, detail="Package does not belong to student")
-    
+
     update_data = package_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(pkg, field, value)
-        
+
+    if update_data:
+        student = await session.get(Student, student_id)
+        await audit.record(
+            session, current_user, "package.updated", "lesson_package", pkg.id,
+            student.name if student else str(student_id),
+            detail=", ".join(f"{k}={v}" for k, v in update_data.items()),
+        )
+
     session.add(pkg)
     await session.commit()
     await session.refresh(pkg)
@@ -377,5 +410,11 @@ async def delete_student_package(
     stmt = delete(Event).where(Event.package_id == package_id)
     await session.execute(stmt)
 
+    student = await session.get(Student, student_id)
     await session.delete(pkg)
+    await audit.record(
+        session, current_user, "package.deleted", "lesson_package", package_id,
+        student.name if student else str(student_id),
+        detail=f"{pkg.total_lessons} 堂／{pkg.start_date}",
+    )
     await session.commit()

@@ -6,3 +6,4 @@ from app.models.payment import Payment
 from app.models.lesson_package import LessonPackage
 from app.models.event import Event
 from app.models.attendance import AttendanceLog
+from app.models.audit_log import AuditLog

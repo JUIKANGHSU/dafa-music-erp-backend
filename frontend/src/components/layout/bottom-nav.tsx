@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Users, CheckCircle2, Calendar, GraduationCap, BookOpen, BarChart3, LogOut, X } from "lucide-react"
+import { LayoutDashboard, Users, CheckCircle2, Calendar, GraduationCap, BookOpen, BarChart3, LogOut, X, History } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 
@@ -17,6 +17,7 @@ const moreItems = [
     { label: "教師管理", icon: GraduationCap, href: "/teachers" },
     { label: "課程方案", icon: BookOpen, href: "/plans" },
     { label: "月報表", icon: BarChart3, href: "/reports" },
+    { label: "操作紀錄", icon: History, href: "/audit-log" },
 ]
 
 const ACCENT = "#F5A41B"

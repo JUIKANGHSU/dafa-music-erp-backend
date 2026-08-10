@@ -8,6 +8,7 @@ from app.models.payment import Payment
 from app.models.lesson_package import LessonPackage
 from app.models.student import Student
 from app.schemas.all import PaymentCreate, PaymentOut, PackageOut
+from app.services import audit
 from datetime import date
 
 router = APIRouter()
@@ -53,6 +54,11 @@ async def create_payment_for_student(
         status="active"
     )
     session.add(package)
+
+    await audit.record(
+        session, current_user, "payment.created", "payment", payment.id, student.name,
+        detail=f"{payment_in.plan_name_snapshot}／${payment_in.paid_amount}／{payment_in.total_lessons}堂",
+    )
 
     await session.commit()
     await session.refresh(payment)

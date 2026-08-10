@@ -11,3 +11,5 @@ api_router.include_router(plans.router, prefix="/plans", tags=["plans"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 from app.api.routes import attendance
 api_router.include_router(attendance.router, prefix="/attendance", tags=["attendance"])
+from app.api.routes import audit
+api_router.include_router(audit.router, tags=["audit"])

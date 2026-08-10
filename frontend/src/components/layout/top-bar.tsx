@@ -11,6 +11,7 @@ const pageTitles: Record<string, string> = {
     "/plans": "課程方案",
     "/checkin": "學生簽到",
     "/reports": "月報表",
+    "/audit-log": "操作紀錄",
 }
 
 export function TopBar() {

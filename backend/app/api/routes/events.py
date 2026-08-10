@@ -6,7 +6,9 @@ import uuid
 
 from app.api import deps
 from app.models.event import Event
+from app.models.student import Student
 from app.schemas.all import EventCreate, EventUpdate, EventOut
+from app.services import audit
 
 router = APIRouter()
 
@@ -180,7 +182,17 @@ async def event_leave(
                 note="Deferred from " + event.start_at.strftime("%Y-%m-%d")
             )
             session.add(new_event)
-            
+
+    student_name = None
+    if event.student_id:
+        student = await session.get(Student, event.student_id)
+        student_name = student.name if student else None
+    await audit.record(
+        session, current_user, "event.leave", "event", event.id,
+        student_name or event.title,
+        detail=f"原訂 {event.start_at.strftime('%Y-%m-%d %H:%M')} 請假並改期",
+    )
+
     await session.commit()
     await session.refresh(event)
     return event
