@@ -46,13 +46,13 @@ async def read_students(
     query = query.offset(skip).limit(limit).order_by(Student.created_at.desc())
     result = await session.execute(query)
     students = result.scalars().all()
-    
+
     if students:
         student_ids = [s.id for s in students]
         # Fetch active packages
         # We need to import models inside function or at top. Using explicit strings in query if needed, but better to import.
         # Assuming imports are added at top.
-        
+
         pkg_query = (
             select(LessonPackage, Plan.name)
             .join(Plan, LessonPackage.plan_id == Plan.id)
@@ -60,19 +60,19 @@ async def read_students(
             .where(LessonPackage.status == 'active')
         )
         pkg_result = await session.execute(pkg_query)
-        
+
         pkg_map = {}
         for pkg, plan_name in pkg_result:
             pkg_map[pkg.student_id] = {
                 "active_plan": plan_name,
                 "remaining_lessons": pkg.total_lessons - pkg.used_lessons
             }
-            
+
         for s in students:
             if s.id in pkg_map:
                 setattr(s, "active_plan", pkg_map[s.id]["active_plan"])
                 setattr(s, "remaining_lessons", pkg_map[s.id]["remaining_lessons"])
-                
+
     return students
 
 @router.post("", response_model=StudentOut)
@@ -125,6 +125,13 @@ async def update_student(
     prev_status = student.status
     for field, value in update_data.items():
         setattr(student, field, value)
+
+    if "name" in update_data:
+        await session.execute(
+            sql_update(Event)
+            .where(Event.student_id == student.id)
+            .values(title=update_data["name"])
+        )
 
     if "status" in update_data and update_data["status"] != prev_status:
         if update_data["status"] == "archived":
